@@ -1,0 +1,35 @@
+[workspace]
+members = [
+    "ctf-assistant",
+    "ctf-core"
+]
+resolver = "2"
+
+[workspace.dependencies]
+# Core dependencies
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+axum = "0.7"
+
+# Analysis dependencies
+infer = "0.15"
+kamadak-exif = "0.5"
+base64 = "0.22"
+flate2 = "1.0"
+goblin = "0.8"
+
+# Testing dependencies
+proptest = "1.0"
+tempfile = "3.0"
+mockall = "0.12"
+
+# Additional common dependencies
+serde_json = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+async-trait = "0.1"

@@ -1,0 +1,30 @@
+[package]
+name = "ctf-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies
+tokio = { workspace = true }
+serde = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+anyhow = { workspace = true }
+
+# Analysis dependencies
+infer = { workspace = true }
+kamadak-exif = { workspace = true }
+base64 = { workspace = true }
+flate2 = { workspace = true }
+goblin = { workspace = true }
+
+# Additional dependencies
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+mockall = { workspace = true }
