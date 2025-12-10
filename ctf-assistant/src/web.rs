@@ -6,14 +6,15 @@ use axum::{
 };
 use tracing::info;
 
-pub async fn start_server(port: u16) -> Result<()> {
-    info!("Starting web server on port {}", port);
+pub async fn start_server(host: String, port: u16) -> Result<()> {
+    info!("Starting web server on {}:{}", host, port);
     
     let app = Router::new()
         .route("/", get(dashboard));
     
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
-    info!("Web server listening on http://0.0.0.0:{}", port);
+    let bind_addr = format!("{}:{}", host, port);
+    let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
+    info!("Web server listening on http://{}", bind_addr);
     
     axum::serve(listener, app).await?;
     

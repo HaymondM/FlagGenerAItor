@@ -27,6 +27,9 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
 tempfile = { workspace = true }
+regex = { workspace = true }
+url = { workspace = true }
+reqwest = { workspace = true }
 
 # Database dependencies
 sqlx = { workspace = true }

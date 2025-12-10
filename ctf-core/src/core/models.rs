@@ -147,7 +147,7 @@ impl ChallengeFile {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum FileType {
     Image,
     Binary,
@@ -391,7 +391,7 @@ impl TransformationResult {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TransformationType {
     Base64Decode,
     Base32Decode,
@@ -532,7 +532,7 @@ impl Finding {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum FindingCategory {
     Steganography,
     Cryptography,

@@ -10,6 +10,9 @@ pub enum CtfError {
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
     
+    #[error("Regex error: {0}")]
+    RegexError(#[from] regex::Error),
+    
     #[error("General error: {0}")]
     GeneralError(#[from] anyhow::Error),
     
