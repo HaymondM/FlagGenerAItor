@@ -18,6 +18,7 @@ pub use analysis::{
     file_analyzer::FileAnalyzer,
     file_security::FileSecurityValidator,
     decoder_pipeline::DecoderPipeline,
+    steganography::SteganographyAnalyzer,
 };
 
 pub use plugins::PluginManager;
