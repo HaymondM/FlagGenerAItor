@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .upload-section {
+            grid-column: 1 / -1;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .file-drop-zone {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f7fafc;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .file-drop-zone.dragover {
+            border-color: #667eea;
+            background: #edf2f7;
+            transform: scale(1.02);
+        }
+
+        .file-drop-zone:hover {
+            border-color: #a0aec0;
+            background: #edf2f7;
+        }
+
+        .file-drop-zone .icon {
+            font-size: 3rem;
+            color: #a0aec0;
+            margin-bottom: 15px;
+        }
+
+        .file-drop-zone .text {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .file-drop-zone .subtext {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-list {
+            margin-top: 20px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .file-item .file-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .file-item .file-icon {
+            margin-right: 10px;
+            color: #667eea;
+        }
+
+        .file-item .file-name {
+            font-weight: 500;
+        }
+
+        .file-item .file-size {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-left: 10px;
+        }
+
+        .file-item .remove-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .file-item .remove-btn:hover {
+            background: #c53030;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .message.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .message.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        .history-section {
+            grid-column: 1 / -1;
+        }
+
+        .challenge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .challenge-card {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .challenge-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .challenge-card h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .challenge-card .meta {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .challenge-card .files {
+            margin-bottom: 15px;
+        }
+
+        .challenge-card .file-tag {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .challenge-card .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .challenge-card .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚩 CTF AI Assistant</h1>
+            <p>Upload your challenge files and get AI-powered hints to solve CTF challenges</p>
+        </div>
+
+        <div class="main-content">
+            <div class="card upload-section">
+                <h2>📁 Upload Challenge</h2>
+                <form id="uploadForm">
+                    <div class="form-group">
+                        <label for="challengeName">Challenge Name *</label>
+                        <input type="text" id="challengeName" name="challengeName" required 
+                               placeholder="Enter a descriptive name for your challenge">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="challengeContext">Challenge Description</label>
+                        <textarea id="challengeContext" name="challengeContext" 
+                                  placeholder="Provide any context, hints, or description about the challenge (optional)"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Challenge Files *</label>
+                        <div class="file-drop-zone" id="fileDropZone">
+                            <div class="icon">📁</div>
+                            <div class="text">Drag and drop files here</div>
+                            <div class="subtext">or click to browse files</div>
+                            <input type="file" id="fileInput" class="file-input" multiple 
+                                   accept=".jpg,.jpeg,.png,.gif,.pdf,.zip,.txt,.js,.html,.pcap,.bin,.exe">
+                        </div>
+                        <div class="file-list" id="fileList"></div>
+                    </div>
+                    
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    
+                    <div class="message" id="message"></div>
+                    
+                    <button type="submit" class="btn" id="submitBtn">
+                        🚀 Upload and Analyze
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card history-section">
+            <h2>📚 Recent Challenges</h2>
+            <div class="challenge-grid" id="challengeGrid">
+                <div style="text-align: center; color: #718096; grid-column: 1 / -1;">
+                    Loading challenges...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CTFAssistant {
+            constructor() {
+                this.selectedFiles = [];
+                this.initializeEventListeners();
+                this.loadChallenges();
+            }
+
+            initializeEventListeners() {
+                const fileDropZone = document.getElementById('fileDropZone');
+                const fileInput = document.getElementById('fileInput');
+                const uploadForm = document.getElementById('uploadForm');
+
+                // File drop zone events
+                fileDropZone.addEventListener('click', () => fileInput.click());
+                fileDropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+                fileDropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                fileDropZone.addEventListener('drop', this.handleDrop.bind(this));
+
+                // File input change
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+                // Form submission
+                uploadForm.addEventListener('submit', this.handleSubmit.bind(this));
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('fileDropZone').classList.add('dragover');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('fileDropZone').classList.remove('dragover');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('fileDropZone').classList.remove('dragover');
+                
+                const files = Array.from(e.dataTransfer.files);
+                this.addFiles(files);
+            }
+
+            handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                this.addFiles(files);
+            }
+
+            addFiles(files) {
+                files.forEach(file => {
+                    if (!this.selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                        this.selectedFiles.push(file);
+                    }
+                });
+                this.updateFileList();
+            }
+
+            removeFile(index) {
+                this.selectedFiles.splice(index, 1);
+                this.updateFileList();
+            }
+
+            updateFileList() {
+                const fileList = document.getElementById('fileList');
+                
+                if (this.selectedFiles.length === 0) {
+                    fileList.innerHTML = '';
+                    return;
+                }
+
+                fileList.innerHTML = this.selectedFiles.map((file, index) => `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <span class="file-icon">${this.getFileIcon(file.name)}</span>
+                            <span class="file-name">${file.name}</span>
+                            <span class="file-size">(${this.formatFileSize(file.size)})</span>
+                        </div>
+                        <button type="button" class="remove-btn" onclick="ctfAssistant.removeFile(${index})">
+                            Remove
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            getFileIcon(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                const iconMap = {
+                    'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️',
+                    'pdf': '📄', 'txt': '📝', 'zip': '📦',
+                    'js': '📜', 'html': '🌐', 'pcap': '🌐',
+                    'bin': '⚙️', 'exe': '⚙️'
+                };
+                return iconMap[ext] || '📄';
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            async handleSubmit(e) {
+                e.preventDefault();
+                
+                const challengeName = document.getElementById('challengeName').value.trim();
+                const challengeContext = document.getElementById('challengeContext').value.trim();
+                
+                if (!challengeName) {
+                    this.showMessage('Please enter a challenge name', 'error');
+                    return;
+                }
+                
+                if (this.selectedFiles.length === 0) {
+                    this.showMessage('Please select at least one file', 'error');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('challenge_name', challengeName);
+                formData.append('challenge_context', challengeContext);
+                
+                this.selectedFiles.forEach(file => {
+                    formData.append('files', file);
+                });
+
+                this.setLoading(true);
+                this.showProgress(0);
+
+                try {
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.showMessage('Challenge uploaded successfully! Starting analysis...', 'success');
+                        this.resetForm();
+                        
+                        // Start analysis
+                        await this.analyzeChallenge(result.challenge_id);
+                        
+                        // Reload challenges
+                        this.loadChallenges();
+                    } else {
+                        this.showMessage(result.message || 'Upload failed', 'error');
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    this.showMessage('Upload failed: ' + error.message, 'error');
+                } finally {
+                    this.setLoading(false);
+                    this.hideProgress();
+                }
+            }
+
+            async analyzeChallenge(challengeId) {
+                try {
+                    this.showProgress(50);
+                    const response = await fetch(`/api/analyze/${challengeId}`, {
+                        method: 'POST'
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.showMessage('Analysis completed successfully!', 'success');
+                        this.showProgress(100);
+                    } else {
+                        this.showMessage('Analysis failed: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    this.showMessage('Analysis failed: ' + error.message, 'error');
+                }
+            }
+
+            async loadChallenges() {
+                try {
+                    const response = await fetch('/api/challenges?limit=10');
+                    const result = await response.json();
+                    
+                    this.displayChallenges(result.challenges || []);
+                } catch (error) {
+                    console.error('Failed to load challenges:', error);
+                    document.getElementById('challengeGrid').innerHTML = `
+                        <div style="text-align: center; color: #e53e3e; grid-column: 1 / -1;">
+                            Failed to load challenges
+                        </div>
+                    `;
+                }
+            }
+
+            displayChallenges(challenges) {
+                const challengeGrid = document.getElementById('challengeGrid');
+                
+                if (challenges.length === 0) {
+                    challengeGrid.innerHTML = `
+                        <div style="text-align: center; color: #718096; grid-column: 1 / -1;">
+                            No challenges yet. Upload your first challenge above!
+                        </div>
+                    `;
+                    return;
+                }
+
+                challengeGrid.innerHTML = challenges.map(challenge => `
+                    <div class="challenge-card">
+                        <h3>${this.escapeHtml(challenge.name)}</h3>
+                        <div class="meta">
+                            Created: ${new Date(challenge.created_at).toLocaleDateString()}
+                        </div>
+                        <div class="files">
+                            ${challenge.files.map(file => 
+                                `<span class="file-tag">${file.file_type}</span>`
+                            ).join('')}
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-small" onclick="ctfAssistant.viewChallenge('${challenge.id}')">
+                                View Results
+                            </button>
+                            <button class="btn btn-small" onclick="ctfAssistant.getHints('${challenge.id}')">
+                                Get Hints
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async viewChallenge(challengeId) {
+                window.location.href = `/results?id=${challengeId}`;
+            }
+
+            async getHints(challengeId) {
+                const query = prompt('What would you like help with for this challenge?');
+                if (!query) return;
+
+                try {
+                    const response = await fetch('/api/hint', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            challenge_id: challengeId,
+                            user_query: query
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success && result.hints) {
+                        const hints = result.hints.hints.join('\n\n');
+                        alert(`AI Hints:\n\n${hints}\n\nReasoning:\n${result.hints.reasoning}`);
+                    } else {
+                        alert('Failed to generate hints: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Hint generation error:', error);
+                    alert('Failed to generate hints: ' + error.message);
+                }
+            }
+
+            resetForm() {
+                document.getElementById('uploadForm').reset();
+                this.selectedFiles = [];
+                this.updateFileList();
+            }
+
+            setLoading(loading) {
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = loading;
+                submitBtn.textContent = loading ? '⏳ Processing...' : '🚀 Upload and Analyze';
+            }
+
+            showProgress(percent) {
+                const progressBar = document.getElementById('progressBar');
+                const progressFill = document.getElementById('progressFill');
+                
+                progressBar.classList.add('active');
+                progressFill.style.width = percent + '%';
+            }
+
+            hideProgress() {
+                setTimeout(() => {
+                    document.getElementById('progressBar').classList.remove('active');
+                }, 1000);
+            }
+
+            showMessage(text, type) {
+                const message = document.getElementById('message');
+                message.textContent = text;
+                message.className = `message ${type}`;
+                message.style.display = 'block';
+                
+                setTimeout(() => {
+                    message.style.display = 'none';
+                }, 5000);
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // Initialize the application
+        const ctfAssistant = new CTFAssistant();
+    </script>
+</body>
+</html>

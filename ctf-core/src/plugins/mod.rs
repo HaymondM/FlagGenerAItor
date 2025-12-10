@@ -151,6 +151,7 @@ impl PluginManager {
             return Err(CtfError::PluginError {
                 plugin_name: name,
                 message: "Plugin is already registered".to_string(),
+                context: None,
             });
         }
         
@@ -322,6 +323,7 @@ impl PluginManager {
             return Err(CtfError::PluginError {
                 plugin_name: plugin.name().to_string(),
                 message: format!("Invalid confidence value: {}", result.confidence),
+                context: None,
             });
         }
         
@@ -364,6 +366,7 @@ impl PluginManager {
             .ok_or_else(|| CtfError::PluginError {
                 plugin_name: plugin_name.to_string(),
                 message: "Plugin not found".to_string(),
+                context: None,
             })?;
         
         // Check if plugin supports the file type
@@ -371,6 +374,7 @@ impl PluginManager {
             return Err(CtfError::PluginError {
                 plugin_name: plugin_name.to_string(),
                 message: format!("Plugin does not support file type: {:?}", context.file_type),
+                context: None,
             });
         }
         

@@ -4,6 +4,7 @@ use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde_json::Value;
 use std::time::Duration;
+use ctf_core::{UserFriendlyError, ErrorContext, ErrorCategory};
 
 /// Output formatter for different display formats
 pub struct OutputFormatter {
@@ -247,6 +248,167 @@ impl OutputFormatter {
                 }
             }
             OutputFormat::Json | OutputFormat::Compact => String::new(),
+        }
+    }
+
+    /// Format a user-friendly error with context
+    pub fn format_user_friendly_error(&self, error: &UserFriendlyError, context: Option<&ErrorContext>, verbose: bool) -> String {
+        match self.format {
+            OutputFormat::Text => {
+                let mut output = String::new();
+                
+                // Error icon and message with color coding
+                let (icon, message_color) = match error.category {
+                    ErrorCategory::Security => ("🔒", "bright_red"),
+                    ErrorCategory::FileAccess => ("📁", "bright_red"),
+                    ErrorCategory::FileFormat => ("📄", "bright_yellow"),
+                    ErrorCategory::Network => ("🌐", "bright_yellow"),
+                    ErrorCategory::Plugin => ("🔌", "bright_yellow"),
+                    ErrorCategory::System => ("⚙️", "bright_red"),
+                    _ => ("❌", "bright_red"),
+                };
+                
+                if self.use_colors {
+                    let colored_message = match message_color {
+                        "bright_red" => error.message.bright_red().bold(),
+                        "bright_yellow" => error.message.bright_yellow().bold(),
+                        _ => error.message.white().bold(),
+                    };
+                    output.push_str(&format!("{} {}\n", icon, colored_message));
+                } else {
+                    output.push_str(&format!("{} {}\n", icon, error.message));
+                }
+                
+                // Add context information if verbose
+                if verbose {
+                    if let Some(ctx) = context {
+                        if self.use_colors {
+                            output.push_str(&format!("\n{}\n", "📍 Context:".bright_cyan()));
+                            output.push_str(&format!("   {}: {}\n", "Operation".bright_blue(), ctx.operation.white()));
+                        } else {
+                            output.push_str("\n📍 Context:\n");
+                            output.push_str(&format!("   Operation: {}\n", ctx.operation));
+                        }
+                        
+                        if let Some(file_type) = &ctx.file_type {
+                            if self.use_colors {
+                                output.push_str(&format!("   {}: {}\n", "File Type".bright_blue(), file_type.white()));
+                            } else {
+                                output.push_str(&format!("   File Type: {}\n", file_type));
+                            }
+                        }
+                        
+                        if let Some(file_path) = &ctx.file_path {
+                            if self.use_colors {
+                                output.push_str(&format!("   {}: {}\n", "File Path".bright_blue(), file_path.white()));
+                            } else {
+                                output.push_str(&format!("   File Path: {}\n", file_path));
+                            }
+                        }
+                        
+                        if self.use_colors {
+                            output.push_str(&format!("   {}: {}\n", "Timestamp".bright_blue(), 
+                                ctx.timestamp.format("%Y-%m-%d %H:%M:%S UTC").to_string().white()));
+                        } else {
+                            output.push_str(&format!("   Timestamp: {}\n", ctx.timestamp.format("%Y-%m-%d %H:%M:%S UTC")));
+                        }
+                        
+                        if !ctx.call_chain.is_empty() {
+                            if self.use_colors {
+                                output.push_str(&format!("   {}: {}\n", "Call Chain".bright_blue(), 
+                                    ctx.call_chain.join(" → ").white()));
+                            } else {
+                                output.push_str(&format!("   Call Chain: {}\n", ctx.call_chain.join(" → ")));
+                            }
+                        }
+                        
+                        if !ctx.diagnostics.is_empty() {
+                            if self.use_colors {
+                                output.push_str(&format!("   {}:\n", "Diagnostics".bright_blue()));
+                            } else {
+                                output.push_str("   Diagnostics:\n");
+                            }
+                            for (key, value) in &ctx.diagnostics {
+                                if self.use_colors {
+                                    output.push_str(&format!("     {}: {}\n", key.bright_blue(), value.white()));
+                                } else {
+                                    output.push_str(&format!("     {}: {}\n", key, value));
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Add suggestions
+                if !error.suggestions.is_empty() {
+                    if self.use_colors {
+                        output.push_str(&format!("\n{}\n", "💡 Suggestions:".bright_cyan()));
+                    } else {
+                        output.push_str("\n💡 Suggestions:\n");
+                    }
+                    for (i, suggestion) in error.suggestions.iter().enumerate() {
+                        if self.use_colors {
+                            output.push_str(&format!("   {}. {}\n", format!("{}", i + 1).bright_blue(), suggestion.white()));
+                        } else {
+                            output.push_str(&format!("   {}. {}\n", i + 1, suggestion));
+                        }
+                    }
+                }
+                
+                // Add recovery information
+                if error.recoverable {
+                    if self.use_colors {
+                        output.push_str(&format!("\n{} {}\n", "🔄".bright_green(), 
+                            "This error is recoverable. You can try the suggested actions above.".bright_green()));
+                    } else {
+                        output.push_str("\n🔄 This error is recoverable. You can try the suggested actions above.\n");
+                    }
+                } else {
+                    if self.use_colors {
+                        output.push_str(&format!("\n{} {}\n", "⚠️".bright_red(), 
+                            "This error requires immediate attention and may not be recoverable.".bright_red().bold()));
+                    } else {
+                        output.push_str("\n⚠️  This error requires immediate attention and may not be recoverable.\n");
+                    }
+                }
+                
+                output
+            }
+            OutputFormat::Json => {
+                let json_error = serde_json::json!({
+                    "error": {
+                        "message": error.message,
+                        "category": format!("{:?}", error.category),
+                        "recoverable": error.recoverable,
+                        "suggestions": error.suggestions,
+                        "context": context.map(|ctx| serde_json::json!({
+                            "operation": ctx.operation,
+                            "file_type": ctx.file_type,
+                            "file_path": ctx.file_path,
+                            "timestamp": ctx.timestamp,
+                            "call_chain": ctx.call_chain,
+                            "diagnostics": ctx.diagnostics
+                        }))
+                    }
+                });
+                serde_json::to_string_pretty(&json_error).unwrap_or_else(|_| "{}".to_string())
+            }
+            OutputFormat::Compact => {
+                let mut parts = vec![
+                    format!("ERROR={}", error.message.replace(' ', "_")),
+                    format!("CATEGORY={:?}", error.category),
+                    format!("RECOVERABLE={}", error.recoverable),
+                ];
+                
+                if let Some(ctx) = context {
+                    parts.push(format!("OPERATION={}", ctx.operation.replace(' ', "_")));
+                    if let Some(file_type) = &ctx.file_type {
+                        parts.push(format!("FILE_TYPE={}", file_type));
+                    }
+                }
+                
+                parts.join(" ")
+            }
         }
     }
 }

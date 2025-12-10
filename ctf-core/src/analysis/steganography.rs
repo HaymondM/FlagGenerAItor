@@ -61,7 +61,8 @@ impl SteganographyAnalyzer {
         let exif_reader = Reader::new();
         let exif = exif_reader.read_from_container(&mut cursor.clone())
             .map_err(|e| CtfError::AnalysisError { 
-                message: format!("Failed to read EXIF data: {}", e) 
+                message: format!("Failed to read EXIF data: {}", e),
+                context: None,
             })?;
 
         // Extract common EXIF fields
@@ -145,12 +146,14 @@ impl SteganographyAnalyzer {
         // Create temporary file for external tools
         let temp_file = tempfile::NamedTempFile::new()
             .map_err(|e| CtfError::AnalysisError { 
-                message: format!("Failed to create temporary file: {}", e) 
+                message: format!("Failed to create temporary file: {}", e),
+                context: None,
             })?;
         
         std::fs::write(temp_file.path(), data)
             .map_err(|e| CtfError::AnalysisError { 
-                message: format!("Failed to write temporary file: {}", e) 
+                message: format!("Failed to write temporary file: {}", e),
+                context: None,
             })?;
 
         // Run zsteg if available

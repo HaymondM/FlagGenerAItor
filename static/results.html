@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge Results - CTF AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header .meta {
+            color: #718096;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        .header .context {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin-top: 15px;
+        }
+
+        .back-btn {
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a67d8;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+        }
+
+        .results-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .file-card {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .file-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .file-card .file-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .file-card .file-icon {
+            font-size: 1.5rem;
+        }
+
+        .file-card .file-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .file-card .file-meta {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .file-card .file-type {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .analysis-section {
+            margin-top: 20px;
+        }
+
+        .analysis-item {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .analysis-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .analysis-title {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .confidence-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .confidence-high {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .confidence-medium {
+            background: #fef5e7;
+            color: #744210;
+        }
+
+        .confidence-low {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .transformations {
+            margin-bottom: 15px;
+        }
+
+        .transformation-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .transformation-success {
+            border-left: 4px solid #48bb78;
+        }
+
+        .transformation-failed {
+            border-left: 4px solid #f56565;
+        }
+
+        .transformation-meaningful {
+            background: #f0fff4;
+        }
+
+        .transformation-name {
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .transformation-status {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-failed {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-meaningful {
+            background: #bee3f8;
+            color: #2a4365;
+        }
+
+        .findings {
+            margin-top: 15px;
+        }
+
+        .finding-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .finding-category {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .finding-description {
+            color: #4a5568;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .finding-evidence {
+            background: #f7fafc;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .finding-evidence h4 {
+            color: #2d3748;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .evidence-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .evidence-list li {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #2d3748;
+        }
+
+        .suggested-actions {
+            margin-top: 10px;
+        }
+
+        .suggested-actions h4 {
+            color: #2d3748;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .action-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .action-list li {
+            background: #e6fffa;
+            border-left: 3px solid #38b2ac;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            color: #234e52;
+        }
+
+        .hint-section {
+            position: sticky;
+            top: 20px;
+        }
+
+        .hint-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .hint-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .hint-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .hint-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hint-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .hint-response {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .hint-response.active {
+            display: block;
+        }
+
+        .hint-response h4 {
+            color: #22543d;
+            margin-bottom: 10px;
+        }
+
+        .hint-list {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 15px;
+        }
+
+        .hint-list li {
+            background: white;
+            border: 1px solid #c6f6d5;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            color: #22543d;
+        }
+
+        .hint-reasoning {
+            background: white;
+            border: 1px solid #c6f6d5;
+            border-radius: 6px;
+            padding: 12px;
+            color: #22543d;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            color: #718096;
+            padding: 40px;
+        }
+
+        .error {
+            text-align: center;
+            color: #e53e3e;
+            padding: 40px;
+            background: #fed7d7;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .hint-section {
+                position: static;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .files-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">
+            ← Back to Dashboard
+        </a>
+
+        <div class="header">
+            <h1 id="challengeTitle">
+                🚩 Loading Challenge...
+            </h1>
+            <div class="meta" id="challengeMeta">
+                Loading challenge information...
+            </div>
+            <div class="context" id="challengeContext" style="display: none;">
+                <strong>Challenge Description:</strong>
+                <p id="contextText"></p>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="results-section">
+                <div class="card">
+                    <h2>📁 Challenge Files</h2>
+                    <div class="files-grid" id="filesGrid">
+                        <div class="loading">Loading files...</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>🔍 Analysis Results</h2>
+                    <div class="analysis-section" id="analysisSection">
+                        <div class="loading">Loading analysis results...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="card hint-section">
+                    <h2>🤖 AI Hints</h2>
+                    <textarea class="hint-input" id="hintInput" 
+                              placeholder="Ask a specific question about this challenge..."></textarea>
+                    <button class="hint-btn" id="hintBtn" onclick="generateHint()">
+                        Get AI Hints
+                    </button>
+                    <div class="hint-response" id="hintResponse">
+                        <h4>💡 Hints:</h4>
+                        <ul class="hint-list" id="hintList"></ul>
+                        <h4>🧠 Reasoning:</h4>
+                        <div class="hint-reasoning" id="hintReasoning"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>📊 Challenge Summary</h2>
+                    <div id="challengeSummary">
+                        <div class="loading">Loading summary...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ResultsViewer {
+            constructor() {
+                this.challengeId = this.getChallengeIdFromUrl();
+                this.challenge = null;
+                this.loadChallenge();
+            }
+
+            getChallengeIdFromUrl() {
+                const params = new URLSearchParams(window.location.search);
+                return params.get('id');
+            }
+
+            async loadChallenge() {
+                if (!this.challengeId) {
+                    this.showError('No challenge ID provided');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/challenges/${this.challengeId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    this.challenge = await response.json();
+                    this.displayChallenge();
+                } catch (error) {
+                    console.error('Failed to load challenge:', error);
+                    this.showError('Failed to load challenge: ' + error.message);
+                }
+            }
+
+            displayChallenge() {
+                // Update header
+                document.getElementById('challengeTitle').innerHTML = 
+                    `🚩 ${this.escapeHtml(this.challenge.name)}`;
+                
+                document.getElementById('challengeMeta').textContent = 
+                    `Created: ${new Date(this.challenge.created_at).toLocaleString()} • ${this.challenge.files.length} file(s)`;
+
+                if (this.challenge.context && this.challenge.context.trim()) {
+                    document.getElementById('challengeContext').style.display = 'block';
+                    document.getElementById('contextText').textContent = this.challenge.context;
+                }
+
+                // Display files
+                this.displayFiles();
+
+                // Display analysis results
+                this.displayAnalysisResults();
+
+                // Display summary
+                this.displaySummary();
+            }
+
+            displayFiles() {
+                const filesGrid = document.getElementById('filesGrid');
+                
+                if (this.challenge.files.length === 0) {
+                    filesGrid.innerHTML = '<div class="error">No files found</div>';
+                    return;
+                }
+
+                filesGrid.innerHTML = this.challenge.files.map(file => `
+                    <div class="file-card">
+                        <div class="file-header">
+                            <span class="file-icon">${this.getFileIcon(file.original_name)}</span>
+                            <span class="file-name">${this.escapeHtml(file.original_name)}</span>
+                        </div>
+                        <div class="file-meta">
+                            Size: ${this.formatFileSize(file.size)} • Hash: ${file.hash.substring(0, 8)}...
+                        </div>
+                        <span class="file-type">${file.file_type}</span>
+                    </div>
+                `).join('');
+            }
+
+            displayAnalysisResults() {
+                const analysisSection = document.getElementById('analysisSection');
+                
+                if (this.challenge.analysis_results.length === 0) {
+                    analysisSection.innerHTML = `
+                        <div class="error">
+                            No analysis results available. 
+                            <button onclick="location.reload()" style="margin-left: 10px; padding: 5px 10px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Refresh
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                analysisSection.innerHTML = this.challenge.analysis_results.map(result => `
+                    <div class="analysis-item">
+                        <div class="analysis-header">
+                            <span class="analysis-title">${this.escapeHtml(result.analyzer)}</span>
+                            <span class="confidence-badge ${this.getConfidenceClass(result.confidence)}">
+                                ${Math.round(result.confidence * 100)}% confidence
+                            </span>
+                        </div>
+
+                        ${result.transformations.length > 0 ? `
+                            <div class="transformations">
+                                <h4>🔄 Transformations Applied:</h4>
+                                ${result.transformations.map(t => `
+                                    <div class="transformation-item ${t.success ? 'transformation-success' : 'transformation-failed'} ${t.meaningful ? 'transformation-meaningful' : ''}">
+                                        <span class="transformation-name">${t.transformation.description || t.transformation}</span>
+                                        <div class="transformation-status">
+                                            <span class="status-badge ${t.success ? 'status-success' : 'status-failed'}">
+                                                ${t.success ? 'Success' : 'Failed'}
+                                            </span>
+                                            ${t.meaningful ? '<span class="status-badge status-meaningful">Meaningful</span>' : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+
+                        ${result.findings.length > 0 ? `
+                            <div class="findings">
+                                <h4>🔍 Findings:</h4>
+                                ${result.findings.map(finding => `
+                                    <div class="finding-item">
+                                        <div class="finding-header">
+                                            <span class="finding-category">${finding.category}</span>
+                                            <span class="confidence-badge ${this.getConfidenceClass(finding.confidence)}">
+                                                ${Math.round(finding.confidence * 100)}%
+                                            </span>
+                                        </div>
+                                        <div class="finding-description">
+                                            ${this.escapeHtml(finding.description)}
+                                        </div>
+                                        ${finding.evidence.length > 0 ? `
+                                            <div class="finding-evidence">
+                                                <h4>Evidence:</h4>
+                                                <ul class="evidence-list">
+                                                    ${finding.evidence.map(e => `<li>${this.escapeHtml(e)}</li>`).join('')}
+                                                </ul>
+                                            </div>
+                                        ` : ''}
+                                        ${finding.suggested_actions.length > 0 ? `
+                                            <div class="suggested-actions">
+                                                <h4>Suggested Actions:</h4>
+                                                <ul class="action-list">
+                                                    ${finding.suggested_actions.map(a => `<li>${this.escapeHtml(a)}</li>`).join('')}
+                                                </ul>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            }
+
+            displaySummary() {
+                const summaryDiv = document.getElementById('challengeSummary');
+                
+                const totalFiles = this.challenge.files.length;
+                const totalAnalyses = this.challenge.analysis_results.length;
+                const totalFindings = this.challenge.analysis_results.reduce((sum, r) => sum + r.findings.length, 0);
+                const highConfidenceFindings = this.challenge.analysis_results
+                    .flatMap(r => r.findings)
+                    .filter(f => f.confidence >= 0.7).length;
+
+                const fileTypes = [...new Set(this.challenge.files.map(f => f.file_type))];
+                const findingCategories = [...new Set(this.challenge.analysis_results
+                    .flatMap(r => r.findings)
+                    .map(f => f.category))];
+
+                summaryDiv.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div style="text-align: center; padding: 15px; background: #f7fafc; border-radius: 8px;">
+                            <div style="font-size: 2rem; color: #667eea;">${totalFiles}</div>
+                            <div style="color: #718096; font-size: 0.9rem;">Files</div>
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #f7fafc; border-radius: 8px;">
+                            <div style="font-size: 2rem; color: #48bb78;">${totalFindings}</div>
+                            <div style="color: #718096; font-size: 0.9rem;">Findings</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <strong>File Types:</strong><br>
+                        ${fileTypes.map(type => `<span class="file-type" style="margin: 2px;">${type}</span>`).join('')}
+                    </div>
+                    
+                    ${findingCategories.length > 0 ? `
+                        <div style="margin-bottom: 15px;">
+                            <strong>Finding Categories:</strong><br>
+                            ${findingCategories.map(cat => `<span class="finding-category" style="margin: 2px;">${cat}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                    
+                    <div>
+                        <strong>High Confidence Findings:</strong> ${highConfidenceFindings}/${totalFindings}
+                    </div>
+                `;
+            }
+
+            async generateHint() {
+                const hintInput = document.getElementById('hintInput');
+                const hintBtn = document.getElementById('hintBtn');
+                const hintResponse = document.getElementById('hintResponse');
+                
+                const query = hintInput.value.trim();
+                if (!query) {
+                    alert('Please enter a question about the challenge');
+                    return;
+                }
+
+                hintBtn.disabled = true;
+                hintBtn.textContent = '🤔 Thinking...';
+
+                try {
+                    const response = await fetch('/api/hint', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            challenge_id: this.challengeId,
+                            user_query: query
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success && result.hints) {
+                        this.displayHints(result.hints);
+                        hintInput.value = '';
+                    } else {
+                        alert('Failed to generate hints: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Hint generation error:', error);
+                    alert('Failed to generate hints: ' + error.message);
+                } finally {
+                    hintBtn.disabled = false;
+                    hintBtn.textContent = 'Get AI Hints';
+                }
+            }
+
+            displayHints(hints) {
+                const hintResponse = document.getElementById('hintResponse');
+                const hintList = document.getElementById('hintList');
+                const hintReasoning = document.getElementById('hintReasoning');
+
+                hintList.innerHTML = hints.hints.map(hint => 
+                    `<li>${this.escapeHtml(hint)}</li>`
+                ).join('');
+
+                hintReasoning.textContent = hints.reasoning;
+
+                hintResponse.classList.add('active');
+            }
+
+            getFileIcon(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                const iconMap = {
+                    'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️',
+                    'pdf': '📄', 'txt': '📝', 'zip': '📦',
+                    'js': '📜', 'html': '🌐', 'pcap': '🌐',
+                    'bin': '⚙️', 'exe': '⚙️'
+                };
+                return iconMap[ext] || '📄';
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            getConfidenceClass(confidence) {
+                if (confidence >= 0.7) return 'confidence-high';
+                if (confidence >= 0.4) return 'confidence-medium';
+                return 'confidence-low';
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            showError(message) {
+                document.querySelector('.container').innerHTML = `
+                    <a href="/" class="back-btn">← Back to Dashboard</a>
+                    <div class="error">
+                        <h2>Error Loading Challenge</h2>
+                        <p>${this.escapeHtml(message)}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Global function for hint generation (called from onclick)
+        function generateHint() {
+            if (window.resultsViewer) {
+                window.resultsViewer.generateHint();
+            }
+        }
+
+        // Initialize the results viewer
+        window.resultsViewer = new ResultsViewer();
+    </script>
+</body>
+</html>

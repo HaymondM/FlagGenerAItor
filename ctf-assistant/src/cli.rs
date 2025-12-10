@@ -1,7 +1,8 @@
 use anyhow::{Result, Context};
 use std::path::Path;
-use tracing::{info, debug};
+use tracing::{info, debug, error};
 use crate::{OutputFormat, output::OutputFormatter};
+use ctf_core::{CtfError, ErrorContext, handle_and_format_error, get_verbose_logger};
 
 pub async fn analyze_command(
     file: String, 
@@ -12,6 +13,18 @@ pub async fn analyze_command(
     verbose: bool
 ) -> Result<()> {
     let formatter = OutputFormatter::new(format.clone().into());
+    
+    // Start verbose logging for the entire analysis process
+    if let Some(logger) = get_verbose_logger() {
+        logger.start_step("analysis_command", "Complete file analysis workflow");
+        logger.add_diagnostic("file_path", &file);
+        logger.add_diagnostic("output_format", format!("{:?}", format));
+        logger.add_diagnostic("max_depth", max_depth.to_string());
+        logger.add_diagnostic("hints_enabled", (!no_hints).to_string());
+        if let Some(desc) = &description {
+            logger.add_diagnostic("description", desc);
+        }
+    }
     
     if verbose {
         info!("Starting analysis with parameters:");
@@ -24,7 +37,29 @@ pub async fn analyze_command(
     
     // Validate file exists
     if !Path::new(&file).exists() {
-        anyhow::bail!("File not found: {}", file);
+        if let Some(logger) = get_verbose_logger() {
+            logger.add_diagnostic("file_exists", "false");
+            logger.complete_step(false, Some("File not found".to_string()));
+        }
+        
+        let context = ErrorContext::new("file_validation")
+            .with_file_path(&file)
+            .with_diagnostic("operation", "file_existence_check")
+            .with_diagnostic("requested_file", &file);
+        
+        let error = CtfError::file_processing_error("File not found", context);
+        let formatted_error = handle_and_format_error(&error, verbose);
+        eprintln!("{}", formatted_error);
+        std::process::exit(1);
+    }
+    
+    if let Some(logger) = get_verbose_logger() {
+        logger.add_diagnostic("file_exists", "true");
+    }
+    
+    // Start file validation step
+    if let Some(logger) = get_verbose_logger() {
+        logger.start_step("file_validation", "Validate file existence and accessibility");
     }
     
     // Show progress indicator for long operations
@@ -36,11 +71,62 @@ pub async fn analyze_command(
     };
     
     // Get file metadata
-    let metadata = std::fs::metadata(&file)
-        .with_context(|| format!("Failed to read file metadata: {}", file))?;
+    let metadata = match std::fs::metadata(&file) {
+        Ok(metadata) => {
+            if let Some(logger) = get_verbose_logger() {
+                logger.add_diagnostic("file_size_bytes", metadata.len().to_string());
+                logger.add_diagnostic("file_type", if metadata.is_file() { "file" } else { "directory" });
+                logger.add_diagnostic("metadata_read", "success");
+            }
+            metadata
+        },
+        Err(io_err) => {
+            if let Some(logger) = get_verbose_logger() {
+                logger.add_diagnostic("metadata_read", "failed");
+                logger.add_diagnostic("io_error", format!("{:?}", io_err.kind()));
+                logger.complete_step(false, Some(format!("Metadata read failed: {}", io_err)));
+            }
+            
+            let context = ErrorContext::new("metadata_extraction")
+                .with_file_path(&file)
+                .with_diagnostic("operation", "file_metadata_read")
+                .with_diagnostic("io_error_kind", format!("{:?}", io_err.kind()));
+            
+            let error = CtfError::file_processing_error(
+                format!("Failed to read file metadata: {}", io_err), 
+                context
+            );
+            let formatted_error = handle_and_format_error(&error, verbose);
+            eprintln!("{}", formatted_error);
+            std::process::exit(1);
+        }
+    };
     
     if metadata.len() > 100 * 1024 * 1024 { // 100MB limit
-        anyhow::bail!("File too large: {} bytes (max 100MB)", metadata.len());
+        if let Some(logger) = get_verbose_logger() {
+            logger.add_diagnostic("size_check", "failed");
+            logger.add_diagnostic("size_limit_exceeded", "true");
+            logger.complete_step(false, Some("File size exceeds 100MB limit".to_string()));
+        }
+        
+        let context = ErrorContext::new("file_size_validation")
+            .with_file_path(&file)
+            .with_diagnostic("file_size_bytes", metadata.len().to_string())
+            .with_diagnostic("max_size_bytes", (100 * 1024 * 1024).to_string());
+        
+        let error = CtfError::resource_limit_error(
+            "file_size", 
+            "100MB", 
+            Some(context)
+        );
+        let formatted_error = handle_and_format_error(&error, verbose);
+        eprintln!("{}", formatted_error);
+        std::process::exit(1);
+    }
+    
+    if let Some(logger) = get_verbose_logger() {
+        logger.add_diagnostic("size_check", "passed");
+        logger.complete_step(true, None);
     }
     
     if let Some(pb) = &progress {
@@ -48,6 +134,12 @@ pub async fn analyze_command(
         pb.finish_and_clear();
     } else {
         print_progress("File validation complete", verbose);
+    }
+    
+    // Start analysis processing step
+    if let Some(logger) = get_verbose_logger() {
+        logger.start_step("analysis_processing", "Process file through analysis pipeline");
+        logger.log_memory_usage("pre_analysis");
     }
     
     // Format output based on selected format
@@ -76,6 +168,14 @@ pub async fn analyze_command(
                 ("No steganography patterns found".to_string(), 0.6),
             ];
             print!("{}", formatter.format_findings(&findings));
+            
+            // Show verbose processing summary if enabled
+            if verbose {
+                if let Some(logger) = get_verbose_logger() {
+                    let summary = logger.get_summary();
+                    print!("\n{}", logger.format_summary(&summary));
+                }
+            }
             
             // Show status
             print!("{}", formatter.format_warning("Analysis functionality will be implemented in future tasks"));
@@ -117,6 +217,13 @@ pub async fn analyze_command(
         }
     }
     
+    // Complete analysis processing and overall analysis
+    if let Some(logger) = get_verbose_logger() {
+        logger.log_memory_usage("post_analysis");
+        logger.complete_step(true, None); // Complete analysis_processing step
+        logger.complete_step(true, None); // Complete analysis_command step
+    }
+    
     Ok(())
 }
 
@@ -128,11 +235,26 @@ pub async fn history_command(
 ) -> Result<()> {
     let formatter = OutputFormatter::new(format.clone().into());
     
+    // Start verbose logging for history retrieval
+    if let Some(logger) = get_verbose_logger() {
+        logger.start_step("history_command", "Retrieve and display challenge history");
+        logger.add_diagnostic("limit", limit.to_string());
+        logger.add_diagnostic("output_format", format!("{:?}", format));
+        if let Some(filter_type) = &filter {
+            logger.add_diagnostic("filter", filter_type);
+        }
+    }
+    
     if verbose {
         info!("Retrieving challenge history:");
         info!("  Limit: {}", limit);
         info!("  Filter: {:?}", filter);
         info!("  Format: {:?}", format);
+    }
+    
+    // Start database query step
+    if let Some(logger) = get_verbose_logger() {
+        logger.start_step("database_query", "Query challenge history from database");
     }
     
     // Show progress indicator for long operations
@@ -148,6 +270,12 @@ pub async fn history_command(
     
     if let Some(pb) = &progress {
         pb.finish_and_clear();
+    }
+    
+    if let Some(logger) = get_verbose_logger() {
+        logger.add_diagnostic("query_duration_ms", "500");
+        logger.add_diagnostic("entries_found", "3");
+        logger.complete_step(true, None);
     }
     
     // TODO: Implement actual history retrieval in future tasks
@@ -170,6 +298,14 @@ pub async fn history_command(
             
             for (timestamp, file, status) in sample_entries {
                 print!("{}", formatter.format_history_entry(timestamp, file, status));
+            }
+            
+            // Show verbose processing summary if enabled
+            if verbose {
+                if let Some(logger) = get_verbose_logger() {
+                    let summary = logger.get_summary();
+                    print!("\n{}", logger.format_summary(&summary));
+                }
             }
             
             print!("{}", formatter.format_warning("History functionality will be implemented in future tasks"));
@@ -198,6 +334,11 @@ pub async fn history_command(
             ];
             println!("{}", formatter.format_compact(&key_values));
         }
+    }
+    
+    // Complete history command
+    if let Some(logger) = get_verbose_logger() {
+        logger.complete_step(true, None);
     }
     
     Ok(())

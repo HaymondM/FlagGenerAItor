@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use tracing::{info, Level};
 use tracing_subscriber;
+use ctf_core::{init_error_handler, ErrorHandlerConfig, init_verbose_logger, VerboseConfig};
 
 mod cli;
 mod web;
@@ -115,8 +116,30 @@ async fn main() -> Result<()> {
         .with_line_number(false)
         .init();
     
+    // Initialize error handler
+    let error_config = ErrorHandlerConfig {
+        max_recent_errors: 100,
+        log_stack_traces: cli.verbose,
+        collect_diagnostics: cli.verbose,
+        min_log_level: if cli.verbose { "debug".to_string() } else { "error".to_string() },
+    };
+    init_error_handler(error_config);
+    
+    // Initialize verbose logger
+    let verbose_config = VerboseConfig {
+        show_timing: cli.verbose,
+        show_intermediate_results: cli.verbose,
+        show_detailed_steps: cli.verbose,
+        show_diagnostics: cli.verbose,
+        show_memory_usage: cli.verbose,
+        max_preview_length: if cli.verbose { 500 } else { 100 },
+    };
+    init_verbose_logger(verbose_config, cli.verbose);
+    
     if cli.verbose {
         info!("Starting CTF Assistant in verbose mode");
+        info!("Error handler initialized with verbose diagnostics");
+        info!("Verbose logger initialized with detailed step tracking");
     }
     
     match cli.command {
