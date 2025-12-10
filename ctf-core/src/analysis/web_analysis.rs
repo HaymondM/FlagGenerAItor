@@ -277,6 +277,12 @@ impl WebAnalyzer {
         cookies
     }
 
+    /// Analyze web content for vulnerabilities
+    pub async fn analyze_web_content(&self, data: &[u8]) -> Result<Vec<Finding>> {
+        let content = String::from_utf8_lossy(data);
+        self.analyze_http_request(&content).await
+    }
+
     /// Analyze HTTP requests for vulnerabilities
     pub async fn analyze_http_request(&self, request_data: &str) -> Result<Vec<Finding>> {
         let mut findings = Vec::new();
@@ -536,6 +542,6 @@ mod tests {
             .collect();
         
         assert!(!fuzzing_findings.is_empty());
-        assert!(fuzzing_findings[0].evidence[0].contains("id, name"));
+        assert!(fuzzing_findings[0].evidence[0].contains("Found parameters: id, name"));
     }
 }

@@ -507,8 +507,8 @@ impl SteganographyAnalyzer {
     }
 
     /// Analyze image for hidden data (main entry point)
-    pub async fn analyze_image(&self, data: &[u8]) -> Result<Vec<Finding>> {
-        debug!("Starting steganography analysis for image data ({} bytes)", data.len());
+    pub async fn analyze_image(&self, data: &[u8], filename: &str) -> Result<Vec<Finding>> {
+        debug!("Starting steganography analysis for image data ({} bytes) - {}", data.len(), filename);
         
         // Extract metadata
         let metadata = self.extract_image_metadata(data)?;
@@ -616,7 +616,7 @@ mod tests {
         let analyzer = SteganographyAnalyzer::new();
         let test_data = b"Test image data with some text";
         
-        let result = analyzer.analyze_image(test_data).await;
+        let result = analyzer.analyze_image(test_data, "test_image.jpg").await;
         assert!(result.is_ok());
         
         let findings = result.unwrap();

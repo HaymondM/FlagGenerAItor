@@ -744,3 +744,47 @@ impl Default for AnalysisContext {
         Self::new()
     }
 }
+
+/// Statistics about challenges in the system
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChallengeStatistics {
+    pub total_challenges: u32,
+    pub total_files: u32,
+    pub challenges_by_type: HashMap<FileType, u32>,
+    pub recent_activity: u32,
+    pub avg_analysis_results_per_challenge: f32,
+}
+
+impl ChallengeStatistics {
+    /// Create new empty statistics
+    pub fn new() -> Self {
+        Self {
+            total_challenges: 0,
+            total_files: 0,
+            challenges_by_type: HashMap::new(),
+            recent_activity: 0,
+            avg_analysis_results_per_challenge: 0.0,
+        }
+    }
+
+    /// Get the most common file type
+    pub fn most_common_file_type(&self) -> Option<(&FileType, &u32)> {
+        self.challenges_by_type.iter().max_by_key(|(_, count)| *count)
+    }
+
+    /// Get total unique file types
+    pub fn unique_file_types(&self) -> usize {
+        self.challenges_by_type.len()
+    }
+
+    /// Calculate activity rate (challenges per day in last 30 days)
+    pub fn activity_rate(&self) -> f32 {
+        self.recent_activity as f32 / 30.0
+    }
+}
+
+impl Default for ChallengeStatistics {
+    fn default() -> Self {
+        Self::new()
+    }
+}

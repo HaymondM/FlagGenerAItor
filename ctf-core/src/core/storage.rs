@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use serde_json;
 use sha2::{Sha256, Digest};
 use sqlx::{SqlitePool, Row, sqlite::SqliteConnectOptions};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
@@ -238,6 +239,205 @@ impl SqliteStorage {
         )
         .bind(limit)
         .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut challenges = Vec::new();
+        for row in rows {
+            let id_str: String = row.get("id");
+            let id = Uuid::parse_str(&id_str)?;
+            
+            let mut challenge = Challenge {
+                id,
+                name: row.get("name"),
+                context: row.get("context"),
+                created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))?.with_timezone(&Utc),
+                files: Vec::new(),
+                analysis_results: Vec::new(),
+            };
+
+            // Load associated files
+            challenge.files = self.get_challenge_files(id).await?;
+            
+            // Load analysis results
+            challenge.analysis_results = self.get_challenge_analysis_results(id).await?;
+
+            challenges.push(challenge);
+        }
+
+        Ok(challenges)
+    }
+
+    /// Get challenges filtered by date range
+    pub async fn list_challenges_by_date_range(
+        &self, 
+        start_date: DateTime<Utc>, 
+        end_date: DateTime<Utc>,
+        limit: Option<u32>
+    ) -> Result<Vec<Challenge>> {
+        let limit = limit.unwrap_or(100);
+
+        let rows = sqlx::query(
+            "SELECT id, name, context, created_at FROM challenges 
+             WHERE created_at >= ? AND created_at <= ? 
+             ORDER BY created_at DESC LIMIT ?"
+        )
+        .bind(start_date.to_rfc3339())
+        .bind(end_date.to_rfc3339())
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut challenges = Vec::new();
+        for row in rows {
+            let id_str: String = row.get("id");
+            let id = Uuid::parse_str(&id_str)?;
+            
+            let mut challenge = Challenge {
+                id,
+                name: row.get("name"),
+                context: row.get("context"),
+                created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))?.with_timezone(&Utc),
+                files: Vec::new(),
+                analysis_results: Vec::new(),
+            };
+
+            // Load associated files
+            challenge.files = self.get_challenge_files(id).await?;
+            
+            // Load analysis results
+            challenge.analysis_results = self.get_challenge_analysis_results(id).await?;
+
+            challenges.push(challenge);
+        }
+
+        Ok(challenges)
+    }
+
+    /// Get challenges filtered by file type
+    pub async fn list_challenges_by_file_type(&self, file_type: &FileType, limit: Option<u32>) -> Result<Vec<Challenge>> {
+        let limit = limit.unwrap_or(100);
+        let file_type_str = serde_json::to_string(file_type)?;
+
+        let rows = sqlx::query(
+            "SELECT DISTINCT c.id, c.name, c.context, c.created_at 
+             FROM challenges c 
+             JOIN files f ON c.id = f.challenge_id 
+             WHERE f.file_type = ? 
+             ORDER BY c.created_at DESC LIMIT ?"
+        )
+        .bind(file_type_str)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut challenges = Vec::new();
+        for row in rows {
+            let id_str: String = row.get("id");
+            let id = Uuid::parse_str(&id_str)?;
+            
+            let mut challenge = Challenge {
+                id,
+                name: row.get("name"),
+                context: row.get("context"),
+                created_at: DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))?.with_timezone(&Utc),
+                files: Vec::new(),
+                analysis_results: Vec::new(),
+            };
+
+            // Load associated files
+            challenge.files = self.get_challenge_files(id).await?;
+            
+            // Load analysis results
+            challenge.analysis_results = self.get_challenge_analysis_results(id).await?;
+
+            challenges.push(challenge);
+        }
+
+        Ok(challenges)
+    }
+
+    /// Get challenge statistics
+    pub async fn get_challenge_statistics(&self) -> Result<ChallengeStatistics> {
+        // Get total challenge count
+        let total_challenges_row = sqlx::query("SELECT COUNT(*) as count FROM challenges")
+            .fetch_one(&self.pool)
+            .await?;
+        let total_challenges: i64 = total_challenges_row.get("count");
+
+        // Get total files count
+        let total_files_row = sqlx::query("SELECT COUNT(*) as count FROM files")
+            .fetch_one(&self.pool)
+            .await?;
+        let total_files: i64 = total_files_row.get("count");
+
+        // Get challenges by file type
+        let file_type_rows = sqlx::query(
+            "SELECT f.file_type, COUNT(DISTINCT c.id) as count 
+             FROM challenges c 
+             JOIN files f ON c.id = f.challenge_id 
+             GROUP BY f.file_type"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut challenges_by_type = HashMap::new();
+        for row in file_type_rows {
+            let file_type_str: String = row.get("file_type");
+            let count: i64 = row.get("count");
+            
+            if let Ok(file_type) = serde_json::from_str::<FileType>(&format!("\"{}\"", file_type_str)) {
+                challenges_by_type.insert(file_type, count as u32);
+            }
+        }
+
+        // Get recent activity (challenges in last 30 days)
+        let thirty_days_ago = Utc::now() - chrono::Duration::days(30);
+        let recent_activity_row = sqlx::query(
+            "SELECT COUNT(*) as count FROM challenges WHERE created_at >= ?"
+        )
+        .bind(thirty_days_ago.to_rfc3339())
+        .fetch_one(&self.pool)
+        .await?;
+        let recent_activity: i64 = recent_activity_row.get("count");
+
+        // Get average analysis results per challenge
+        let avg_results_row = sqlx::query(
+            "SELECT AVG(result_count) as avg_count FROM (
+                SELECT COUNT(*) as result_count 
+                FROM analysis_results 
+                GROUP BY challenge_id
+             ) subquery"
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        
+        let avg_analysis_results = avg_results_row
+            .and_then(|row| row.get::<Option<f64>, _>("avg_count"))
+            .unwrap_or(0.0);
+
+        Ok(ChallengeStatistics {
+            total_challenges: total_challenges as u32,
+            total_files: total_files as u32,
+            challenges_by_type,
+            recent_activity: recent_activity as u32,
+            avg_analysis_results_per_challenge: avg_analysis_results as f32,
+        })
+    }
+
+    /// Search challenges by name or context
+    pub async fn search_challenges(&self, query: &str, limit: Option<u32>) -> Result<Vec<Challenge>> {
+        let limit = limit.unwrap_or(100);
+        let search_pattern = format!("%{}%", query);
+
+        let rows = sqlx::query(
+            "SELECT id, name, context, created_at FROM challenges 
+             WHERE name LIKE ? OR context LIKE ? 
+             ORDER BY created_at DESC LIMIT ?"
+        )
+        .bind(&search_pattern)
+        .bind(&search_pattern)
+        .bind(limit)
         .fetch_all(&self.pool)
         .await?;
 
