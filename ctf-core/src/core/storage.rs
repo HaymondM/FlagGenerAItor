@@ -317,7 +317,17 @@ impl SqliteStorage {
     /// Get challenges filtered by file type
     pub async fn list_challenges_by_file_type(&self, file_type: &FileType, limit: Option<u32>) -> Result<Vec<Challenge>> {
         let limit = limit.unwrap_or(100);
-        let file_type_str = serde_json::to_string(file_type)?;
+        let file_type_str = match file_type {
+            FileType::Image => "Image",
+            FileType::Binary => "Binary",
+            FileType::Pcap => "Pcap",
+            FileType::Pdf => "Pdf",
+            FileType::Zip => "Zip",
+            FileType::Javascript => "Javascript",
+            FileType::Html => "Html",
+            FileType::Text => "Text",
+            FileType::Unknown => "Unknown",
+        };
 
         let rows = sqlx::query(
             "SELECT DISTINCT c.id, c.name, c.context, c.created_at 
@@ -386,9 +396,18 @@ impl SqliteStorage {
             let file_type_str: String = row.get("file_type");
             let count: i64 = row.get("count");
             
-            if let Ok(file_type) = serde_json::from_str::<FileType>(&format!("\"{}\"", file_type_str)) {
-                challenges_by_type.insert(file_type, count as u32);
-            }
+            let file_type = match file_type_str.as_str() {
+                "Image" => FileType::Image,
+                "Binary" => FileType::Binary,
+                "Pcap" => FileType::Pcap,
+                "Pdf" => FileType::Pdf,
+                "Zip" => FileType::Zip,
+                "Javascript" => FileType::Javascript,
+                "Html" => FileType::Html,
+                "Text" => FileType::Text,
+                "Unknown" | _ => FileType::Unknown,
+            };
+            challenges_by_type.insert(file_type, count as u32);
         }
 
         // Get recent activity (challenges in last 30 days)
@@ -482,7 +501,17 @@ impl SqliteStorage {
             let id = Uuid::parse_str(&id_str)?;
             
             let file_type_str: String = row.get("file_type");
-            let file_type = serde_json::from_str(&format!("\"{}\"", file_type_str))?;
+            let file_type = match file_type_str.as_str() {
+                "Image" => FileType::Image,
+                "Binary" => FileType::Binary,
+                "Pcap" => FileType::Pcap,
+                "Pdf" => FileType::Pdf,
+                "Zip" => FileType::Zip,
+                "Javascript" => FileType::Javascript,
+                "Html" => FileType::Html,
+                "Text" => FileType::Text,
+                "Unknown" | _ => FileType::Unknown,
+            };
             
             let metadata_json: String = row.get("metadata");
             let metadata: FileMetadata = serde_json::from_str(&metadata_json)?;
@@ -560,7 +589,18 @@ impl ChallengeStorage for SqliteStorage {
 
         // Insert files
         for file in &challenge.files {
-            let file_type_json = serde_json::to_string(&file.file_type)?;
+            // Store file type as simple string instead of JSON to avoid serialization issues
+            let file_type_str = match file.file_type {
+                FileType::Image => "Image",
+                FileType::Binary => "Binary",
+                FileType::Pcap => "Pcap",
+                FileType::Pdf => "Pdf",
+                FileType::Zip => "Zip",
+                FileType::Javascript => "Javascript",
+                FileType::Html => "Html",
+                FileType::Text => "Text",
+                FileType::Unknown => "Unknown",
+            };
             let metadata_json = serde_json::to_string(&file.metadata)?;
 
             sqlx::query(
@@ -569,7 +609,7 @@ impl ChallengeStorage for SqliteStorage {
             .bind(file.id.to_string())
             .bind(challenge.id.to_string())
             .bind(&file.original_name)
-            .bind(file_type_json)
+            .bind(file_type_str)
             .bind(file.size as i64)
             .bind(&file.hash)
             .bind(file.storage_path.to_string_lossy().to_string())

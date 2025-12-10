@@ -94,12 +94,30 @@ impl FileSecurityValidator {
     
     /// Validate that a path is safe and within allowed boundaries
     pub fn validate_path(&self, path: &Path, allowed_base: &Path) -> Result<()> {
-        // Canonicalize paths to resolve any .. or . components
-        let canonical_path = path.canonicalize()
-            .map_err(|_| anyhow!("Invalid path: {}", path.display()))?;
-        
+        // Canonicalize the base path (which should exist)
         let canonical_base = allowed_base.canonicalize()
             .map_err(|_| anyhow!("Invalid base path: {}", allowed_base.display()))?;
+        
+        // For the target path, we need to handle the case where it doesn't exist yet
+        let canonical_path = if path.exists() {
+            // If the path exists, canonicalize it
+            path.canonicalize()
+                .map_err(|_| anyhow!("Invalid path: {}", path.display()))?
+        } else {
+            // If the path doesn't exist, canonicalize its parent and join the filename
+            let parent = path.parent()
+                .ok_or_else(|| anyhow!("Path has no parent: {}", path.display()))?;
+            
+            let filename = path.file_name()
+                .ok_or_else(|| anyhow!("Path has no filename: {}", path.display()))?;
+            
+            // Canonicalize the parent directory (create it if it doesn't exist)
+            std::fs::create_dir_all(parent)?;
+            let canonical_parent = parent.canonicalize()
+                .map_err(|_| anyhow!("Invalid parent path: {}", parent.display()))?;
+            
+            canonical_parent.join(filename)
+        };
         
         // Check if the path is within the allowed base directory
         if !canonical_path.starts_with(&canonical_base) {
