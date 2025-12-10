@@ -24,6 +24,10 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
 
+# Database dependencies
+sqlx = { workspace = true }
+sha2 = { workspace = true }
+
 [dev-dependencies]
 proptest = { workspace = true }
 tempfile = { workspace = true }

@@ -16,6 +16,7 @@ pub use core::{
 
 pub use analysis::{
     file_analyzer::FileAnalyzer,
+    file_security::FileSecurityValidator,
     decoder_pipeline::DecoderPipeline,
 };
 
