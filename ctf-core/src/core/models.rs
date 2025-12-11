@@ -298,8 +298,15 @@ impl AnalysisResult {
         let transformation_confidence = if transformations.is_empty() {
             0.0
         } else {
-            let meaningful_count = transformations.iter().filter(|t| t.meaningful).count() as f32;
-            meaningful_count / transformations.len() as f32
+            let meaningful_transformations: Vec<_> = transformations.iter().filter(|t| t.meaningful).collect();
+            if meaningful_transformations.is_empty() {
+                0.1 // Low confidence if no meaningful transformations
+            } else {
+                // High confidence if we have meaningful transformations
+                // The more meaningful transformations, the higher the confidence
+                let meaningful_ratio = meaningful_transformations.len() as f32 / transformations.len() as f32;
+                0.5 + (meaningful_ratio * 0.4) // Range from 0.5 to 0.9
+            }
         };
 
         let findings_confidence = if findings.is_empty() {
@@ -308,7 +315,14 @@ impl AnalysisResult {
             findings.iter().map(|f| f.confidence).sum::<f32>() / findings.len() as f32
         };
 
-        (transformation_confidence + findings_confidence) / 2.0
+        // If we have both transformations and findings, weight them appropriately
+        if !transformations.is_empty() && !findings.is_empty() {
+            (transformation_confidence * 0.6) + (findings_confidence * 0.4)
+        } else if !transformations.is_empty() {
+            transformation_confidence
+        } else {
+            findings_confidence
+        }
     }
 
     /// Validate the analysis result
