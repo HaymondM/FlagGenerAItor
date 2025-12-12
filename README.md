@@ -283,7 +283,3 @@ The test suite includes:
 - **proptest**: Property-based testing framework
 - **tempfile**: Temporary file handling for tests
 - **mockall**: Mock object generation for unit tests
-
-## License
-
-TBD
